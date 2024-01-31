@@ -7,7 +7,24 @@ app.secret_key = 'fasdgfdgdfg'
 
 @app.route('/')
 def home():
-   return render_template('home.html')
+   return render_template('sql.html')
+
+@app.route('/run',methods = ['POST', 'GET'])
+def run():
+   if request.method == 'POST':
+      try:
+         sql = request.form['sql']
+         with sql.connect("student_database.db") as con:
+            cur = con.cursor()
+            cur.execute(sql)
+            con.commit()
+            msg = "执行sql成功"
+      except:
+         con.rollback()
+         msg = "执行sql失败"
+      finally:
+         return msg
+         con.close()
 
 @app.route('/addstudent')
 def new_student():

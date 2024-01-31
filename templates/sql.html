@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL自学网</title>
+  <meta name="keywords" content="SQL,数据库,数据分析,程序员,编程,SQL学习,SQL教程,MySQL,DB"/>
+  <meta name="description" content="SQL自学网"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/sql-wasm.js"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/sql/sql.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/sql-hint.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.css">
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WYFW0NYFRC"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-WYFW0NYFRC');
+    </script>
+    <script>
+      var _hmt = _hmt || [];
+      (function() {
+        var hm = document.createElement("script");
+        hm.src = "https://hm.baidu.com/hm.js?4411afe0f0c953fea2d355725d61106b";
+        var s = document.getElementsByTagName("script")[0]; 
+        s.parentNode.insertBefore(hm, s);
+      })();
+      </script> 
+
+
+  <style>
+    body { margin: 0; display: flex; flex-direction: column; height: 100vh; }
+    header, footer { background-color: #333; color: white; padding: 10px; text-align: center; }
+    main { display: flex; flex: 1; }
+    textarea { width: 100%; }
+    #editor { flex: 1; }
+    #result { flex: 1; }
+    .panel { padding: 10px; box-sizing: border-box; height: 100%; }
+
+
+  /* 表格样式 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    max-height: 300px;
+    overflow-y: scroll;
+    display: block;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    text-align: left;
+    padding: 8px;
+  }
+  th {
+    background-color: #f2f2f2;
+  }
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  tr:hover {
+    background-color: #f1f1f1;
+  }
+  
+  /* 表格滚动区域样式 */
+  #sql-result-table {
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    margin-top: 1px;
+  }
+
+   /* 执行按钮样式 */
+   .execute-btn {
+    background-color: #4CAF50; /* 绿色 */
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition-duration: 0.4s;
+    box-shadow: 0 2px 2px 0 rgba(0,0,0,0.2), 0 3px 1px -2px rgba(0,0,0,0.2), 0 1px 5px 0 rgba(0,0,0,0.2);
+  }
+  
+  /* 按钮悬停效果 */
+  .execute-btn:hover {
+    background-color: #45a049; /* 深绿色 */
+  }
+
+  </style>
+</head>
+<body>
+  <header>SQL自学网<a href="http://www.zgzf.online/about" target="_blank" style="float: right;color: #f1f1f1;">学习交流群</a></header>
+  <main>
+    <div id="editor" class="panel" style="width: 30%;">
+      <div id="sql-editor" style="overflow-x: auto;"></div>
+      <button class="execute-btn" onclick="executeSQL()">执行SQL</button>
+    </div>
+    <div id="result" class="panel">
+      <!-- 用来放置表格的容器 -->
+      <div id="sql-result-table" style="overflow-x: auto;"></div>
+    </div>    
+  </main>
+  <footer>&copy; 2023 SQL自学网@<a href="http://www.zgzf.online/about" target="_blank" style="color: #f1f1f1;">诸葛子房</a></footer>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    
+  // 示例关键字列表，根据需要可以添加更多
+  const sqlKeywords = [
+    "SELECT", "FROM", "WHERE", "LIMIT", "ORDER BY", "GROUP BY",
+    "INSERT", "DELETE", "UPDATE", "CREATE TABLE", "ALTER TABLE",
+    "DROP TABLE", "INDEX", "VIEW", "IN", "LIKE", "BETWEEN", "JOIN"
+  ];
+
+  // CodeMirror 的 SQL 自动补全配置函数
+  function sqlComplete(editor) {
+    const cursor = editor.getCursor();
+    const token = editor.getTokenAt(cursor);
+    const start = token.start;
+    const end = cursor.ch;
+    const currentWord = token.string.toUpperCase();
+
+    const list = sqlKeywords
+      .filter(keyword => keyword.startsWith(currentWord))
+      .map(keyword => ({
+        text: keyword,
+        displayText: keyword
+      }));
+
+    // 如果当前单词是部分关键字，则补全
+    if (list.length) {
+      return {
+        list: list,
+        from: CodeMirror.Pos(cursor.line, start),
+        to: CodeMirror.Pos(cursor.line, end)
+      };
+    } else {
+      // 调用默认的 SQL 补全
+      return CodeMirror.hint.sql(editor);
+    }
+  }
+
+  // 创建 CodeMirror 编辑器实例
+  const editor = CodeMirror(document.getElementById('sql-editor'), {
+    mode: 'text/x-sql',
+    lineNumbers: true,
+    matchBrackets: true,
+    autoCloseBrackets: true,
+    indentUnit: 4,
+    extraKeys: {
+      "Ctrl-Space": sqlComplete // 绑定自定义补全函数到 Ctrl-Space 快捷键
+    },
+    hintOptions: {
+      hint: sqlComplete, // 设置自定义的补全提示函数
+      completeSingle: false // 禁止在只有单一匹配时自动补全
+    }
+  });
+
+  // 设置初始的 SQL 语句
+    editor.setValue("-- Type your SQL query here\nSELECT a.*,b.* FROM websites a left join website_countries b \n on a.name=b.name");
+
+    function executeSQL() {
+    const sqlResultTable = document.getElementById('sql-result-table');
+
+    try {
+      const sql=editor.getValue();
+      console.log(sql);
+      $.ajax({
+                type: 'post',
+                url: '/run',
+                dataType: 'json',
+                timeout : 40000, //超时时间设置，单位毫秒
+                data: {'sql':sql},
+                success: function(res){
+                    console.log(res)
+                },
+                error: function(){
+                    console.log('error')
+                }
+      });
+
+      const result = null; // 执行SQL命令
+      if (result && result[0] && result[0].values.length > 0) {
+        const cols = result[0].columns;
+        const rows = result[0].values;
+        
+        // 创建表格元素
+        let tableHtml = "<table border='1'><thead><tr>";
+        // 添加表头
+        for (let col of cols) {
+          tableHtml += "<th>" + col + "</th>";
+        }
+        tableHtml += "</tr></thead><tbody>";
+        // 遍历结果集，添加表格行
+        for (let row of rows) {
+          tableHtml += "<tr>";
+          for (let cell of row) {
+            tableHtml += "<td>" + cell + "</td>";
+          }
+          tableHtml += "</tr>";
+        }
+        tableHtml += "</tbody></table>";
+
+        // 插入HTML
+        sqlResultTable.innerHTML = tableHtml;
+      } else {
+        sqlResultTable.innerHTML = "No results.";
+      }
+    } catch (e) {
+      // 显示错误信息
+      sqlResultTable.innerHTML = 'Error: ' + e.message;
+    }
+  }
+  </script>  
+</body>
+</html>
